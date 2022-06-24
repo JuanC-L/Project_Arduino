@@ -1,0 +1,189 @@
+library(shiny)
+library(shinydashboard)
+library(RMySQL)
+library(ggplot2)
+library(tidyverse)
+library(leaflet)
+library(shinyalert)
+library(readxl)
+
+database = dbConnect(MySQL(), user="root", host="localhost", password="newrootpassword", 
+                     dbname = "accidentes")
+
+query = dbGetQuery(database, statement = "select* from accidentes.accident")
+
+
+data=query
+
+graph<-ggplot(data,aes(x=Accidente))+geom_bar(fill="Black")+ggtitle("Casos en su zona esta semana")+theme(plot.title = element_text(hjust = 0.5))
+
+
+ejemplo <-read.table("C:/Users/juanl/OneDrive/Escritorio/ejemplooooo.txt",sep=' ',dec=',',header=TRUE)
+grafico_gas<-ggplot(data=ejemplo)+ geom_line(aes(x=HORA, y=OUTPUT_GAS))
+grafico_flama<-ggplot(data=ejemplo)+ geom_line(aes(x=HORA, y=OUTPUT_FLAMA))
+
+IGP <- read_excel("C:/Users/juanl/OneDrive/Escritorio/IGP.xlsx")
+
+ui<-dashboardPage(title="MR. ROBOT", skin="green",
+                  
+                  dashboardHeader(title="MR. ROBOT",
+                                  dropdownMenu(type="messages",
+                                               messageItem(from="Sistema",
+                                                           "Buenos dias Javier",time="Now")
+                                  ),
+                                  dropdownMenu(type="notifications",
+                                               notificationItem(text="No olvides revisar tus conecciones electricas",icon=icon("bar-chart"))
+                                  ),
+                                  dropdownMenu(type="tasks",
+                                               taskItem(value=70,
+                                                        text="Tareas diarias",
+                                                        color="blue")
+                                  )
+                  ),
+                  
+                  dashboardSidebar(
+                    # width=230,
+                    sidebarUserPanel("Javier",
+                                     subtitle = a(href = "#", icon("circle", class = "text-success",width="auto"), "Online"),
+                                     
+                                     image = "Javier.jfif" 
+                    ),
+                    sidebarSearchForm("searchText","buttonSearch",
+                                      "Buscar",icon=shiny::icon("ambulance")),
+                    sidebarMenu(id="sidebarID",
+                                
+                                menuItem("MR. ROBOT",badgeLabel="22-11",badgeColor="green",tabName="main"),
+                                
+                                menuItem("Informacion de su vivienda",icon=icon("home"),tabName = "mapa"),
+                                
+                                menuItem("Eventos en su ciudad",icon=icon("map"),tabName="first"),
+                                
+                                menuItem("InformaciÃ³n del usuario",icon=icon("user"),id="chartsID",
+                                         menuSubItem("Datos personales",tabName="datos",icon=icon("child")),
+                                         menuSubItem("Daily planner",icon=icon("clipboard-check"))
+                                ),
+                                menuItem("Recomendaciones",id="chartsID",icon=icon("atlas"),
+                                         menuSubItem("Casos de sismo",tabName="Sismos"),
+                                         menuSubItem("Incendios",tabName="Incendio"),
+                                         menuSubItem("Fugas de gas",tabName="Gas"),
+                                         menuSubItem("Fugas de agua",tabName="Agua"),
+                                         menuSubItem("Cortocircuito",tabName="Electricidad"),
+                                         menuSubItem("Mochila de emergencia",tabName="mochila")
+                                ),
+
+                                menuItem("Simulacion_sensores",id="chartsID",icon=icon("biohazard"),
+                                         menuSubItem("Luz",tabName = "luz",icon=icon("bolt")),
+                                         menuSubItem("Sensor de Flama",tabName = "sensor_de_flama",icon=icon("fire")),
+                                         menuSubItem("Sensor de Gas", tabName = "sensor_de_gas",icon=icon("smog")),
+                                         menuSubItem("Sismo",tabName="sismo",icon=icon("globe"))
+                                )         
+                    )
+                    
+                  ),
+                  
+                  dashboardBody(
+                    tabItems(tabItem(tabName = "datos",
+                                     DT::dataTableOutput("datos")
+                    ),
+                    
+                    tabItem(tabName="first",
+                            h1("Casos ocurridos en Lima este mes"),
+                            plotOutput("graph")),
+                    
+                    tabItem(tabName = "main",tags$image(type="image/png",src="main.png",controls="controls",height="650",width="620")),
+                    
+                    tabItem(tabName="Sismos", 
+                            box(title="Sismos", tags$image(type = "image/png",src = "logo_data_sismo.png", controls = "controls",
+                                                           height="650px", width="630px"), width="auto", status="primary", solidHeader=TRUE)),
+                    tabItem(tabName="Incendio", 
+                            box(title="Incendio", tags$image(type = "image/png",src = "Incendio.png", controls = "controls",
+                                                             height="630px", width="630px"), width="auto", status="primary", solidHeader=TRUE)),
+                    tabItem(tabName="Gas", 
+                            box(title="Gas", tags$image(type = "image/png",src = "Gas_new.png", controls = "controls",
+                                                        height="700px", width="600px"), width="auto", status="primary", solidHeader=TRUE)),
+                    tabItem(tabName="Agua", 
+                            box(title="Agua", tags$image(type = "image/png",src = "Agua.png", controls = "controls",
+                                                         height="700px", width="600px"), width="auto", status="primary", solidHeader=TRUE)),
+                    tabItem(tabName="Electricidad", 
+                            box(title="Cortocircuito", tags$image(type = "image/png",src = "Corto.png", controls = "controls",
+                                                                  height="650px", width="600px"), width="auto", status="primary", solidHeader=TRUE)),
+                    
+                    tabItem(tabName="mochila", 
+                            box(title="Mochila de emergencia", tags$image(type = "image/png",src = "mochila.png", controls = "controls",
+                                                                          height="600px", width="600px"), width="auto", status="primary", solidHeader=TRUE)),
+                    tabItem(tabName="mapa",
+                            h1("Bienvenido Javier"),
+                            leafletOutput("map")),
+                    
+                    tabItem(tabName="luz",
+                            h1("Luz",color="green"),useShinyalert(),  
+                            actionButton("leve", "Preview")
+                            ),
+                    
+                    tabItem(tabName="sensor_de_flama",
+                            h1("Sensor de Flama",color="blue"),useShinyalert(),  
+                            actionButton("medio", "Preview"),
+                            plotOutput("grafico_flama")),
+                    
+                    tabItem(tabName="sensor_de_gas",
+                            h1("Sensor de Gas",color="red"),useShinyalert(), 
+                            actionButton("ejemplo", "Prueba"),
+                            plotOutput("grafico_gas")),
+                    tabItem(tabName="sismo",
+                            h1("Alertas emitidas por el  IGP",color="white"),
+                            DT::dataTableOutput("sismo"))
+                    ))
+                  
+)
+
+server <- function(input, output) { 
+  output$datos<-DT::renderDataTable(data)
+  output$sismo<-DT::renderDataTable(IGP)
+  output$graph<-renderPlot({graph})
+  output$grafico_gas<-renderPlot({grafico_gas})
+  output$grafico_flama<-renderPlot({grafico_flama})
+  output$map<-renderLeaflet({
+    leaflet() %>%
+      addTiles() %>%
+      setView(-77.049648,-12.0841357,zoom=15) %>%
+      addPopups(-77.049648,-12.0841357, "Aqui esta <b>su vivienda<b>") %>%
+      addPopups(-77.0447739,-12.0779299,"<b>Gas<b>") %>%
+      addPopups(-77.058065,-12.080714,"<b>Voltaje<b>") %>%
+      addPopups(-77.0496287,-12.0752576,"<b>Agua<b>") %>%
+      addPopups(-77.052671,-12.095773,"<b>Incendio<b>") %>%
+      addPopups(-77.057907,-12.089677,"<b>Agua<b>") %>%
+      addPopups(-77.029589,-12.082364,"<b>Gas<b>") %>%
+      addPopups(-77.071406,-12.079281,"<b>Agua<b>")
+  })
+  observeEvent(input$leve, {
+    shinyalert("Alerta!", "Presencia de flama", type = "warning")
+  })
+  observeEvent(input$leve, {
+    shinyalert("Desalojar la vivienda y llamar a los bomberos",type="warning")
+  })
+  observeEvent(input$medio, {
+    shinyalert("Alerta!", "Presencia de flama", type = "warning")
+  })
+  observeEvent(input$medio, {
+    shinyalert("Desalojar la vivienda y llamar a los bomberos",type="warning")
+  })
+  observeEvent(input$ejemplo, {
+    shinyalert("Peligro!", "Se encuentra en riesgo", type = "error")
+  })
+  observeEvent(input$ejemplo, {
+    shinyalert("Nivel de gas danino")
+  })
+  observeEvent(input$ejemplo, {
+    shinyalert(html = TRUE, text = tagList(
+      numericInput("age", "Ingrese el numero de su contacto de emergencia", 969854459),
+    ))
+    
+  })
+  observeEvent(input$ejemplo, {
+    shinyalert("Desalojar la vivienda y llamar a las autoridades", type="warning")
+  })
+  
+  
+}
+
+shinyApp(ui, server)
